@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fractal Tree Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+        }
+        input[type="number"], input[type="color"] {
+            padding: 5px;
+            width: 150px;
+        }
+        button {
+            padding: 10px 15px;
+            margin-top: 22px;
+            cursor: pointer;
+        }
+        #canvasContainer {
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            max-width: 100%;
+            height: auto;
+        }
+        @media (max-width: 600px) {
+            #controls {
+                flex-direction: column;
+            }
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Fractal Tree Generator</h1>
+
+<div id="controls">
+    <div class="control-group">
+        <label for="depth">Recursion Depth:</label>
+        <input type="number" id="depth" min="1" max="15" value="10">
+    </div>
+    <div class="control-group">
+        <label for="angle">Branch Angle (degrees):</label>
+        <input type="number" id="angle" min="0" max="90" value="30">
+    </div>
+    <div class="control-group">
+        <label for="lengthRatio">Branch Length Ratio (0-1):</label>
+        <input type="number" id="lengthRatio" min="0.5" max="0.9" step="0.01" value="0.7">
+    </div>
+    <div class="control-group">
+        <label for="initialLength">Initial Branch Length (px):</label>
+        <input type="number" id="initialLength" min="50" max="300" value="100">
+    </div>
+    <div class="control-group">
+        <label for="branchColor">Branch Color:</label>
+        <input type="color" id="branchColor" value="#228B22">
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button id="generateBtn">Generate Fractal</button>
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button id="randomBtn">Randomize Parameters</button>
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button id="saveFractalBtn">Save Fractal</button>
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button id="saveParamsBtn">Save Parameters</button>
+    </div>
+    <div class="control-group">
+        <label for="loadParams">Load Parameters:</label>
+        <input type="file" id="loadParams" accept=".json">
+    </div>
+</div>
+
+<div id="canvasContainer">
+    <canvas id="fractalCanvas" width="800" height="600"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('fractalCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Get UI elements
+    const depthInput = document.getElementById('depth');
+    const angleInput = document.getElementById('angle');
+    const lengthRatioInput = document.getElementById('lengthRatio');
+    const initialLengthInput = document.getElementById('initialLength');
+    const branchColorInput = document.getElementById('branchColor');
+
+    const generateBtn = document.getElementById('generateBtn');
+    const randomBtn = document.getElementById('randomBtn');
+    const saveFractalBtn = document.getElementById('saveFractalBtn');
+    const saveParamsBtn = document.getElementById('saveParamsBtn');
+    const loadParamsInput = document.getElementById('loadParams');
+
+    // Function to draw the fractal tree
+    function drawTree(x, y, length, angle, depth, branchColor) {
+        if (depth === 0) return;
+
+        const rad = angle * Math.PI / 180;
+        const x2 = x + length * Math.cos(rad);
+        const y2 = y - length * Math.sin(rad);
+
+        ctx.strokeStyle = branchColor;
+        ctx.lineWidth = depth;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Left branch
+        drawTree(x2, y2, length * parseFloat(lengthRatioInput.value), angle + parseFloat(angleInput.value), depth - 1, branchColor);
+        // Right branch
+        drawTree(x2, y2, length * parseFloat(lengthRatioInput.value), angle - parseFloat(angleInput.value), depth - 1, branchColor);
+    }
+
+    // Function to generate the fractal
+    function generateFractal() {
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Get parameters
+        const depth = parseInt(depthInput.value);
+        const angle = parseFloat(angleInput.value);
+        const lengthRatio = parseFloat(lengthRatioInput.value);
+        const initialLength = parseFloat(initialLengthInput.value);
+        const branchColor = branchColorInput.value;
+
+        // Set starting point at bottom center
+        const x = canvas.width / 2;
+        const y = canvas.height - 20;
+
+        // Draw the tree
+        drawTree(x, y, initialLength, 90, depth, branchColor);
+    }
+
+    // Function to save the fractal as an image
+    function saveFractal() {
+        const link = document.createElement('a');
+        link.download = 'fractal.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    // Function to save parameters as JSON
+    function saveParameters() {
+        const params = {
+            depth: depthInput.value,
+            angle: angleInput.value,
+            lengthRatio: lengthRatioInput.value,
+            initialLength: initialLengthInput.value,
+            branchColor: branchColorInput.value
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(params, null, 2));
+        const link = document.createElement('a');
+        link.setAttribute("href", dataStr);
+        link.setAttribute("download", "fractal_parameters.json");
+        link.click();
+    }
+
+    // Function to load parameters from JSON
+    function loadParameters(file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const params = JSON.parse(event.target.result);
+                depthInput.value = params.depth;
+                angleInput.value = params.angle;
+                lengthRatioInput.value = params.lengthRatio;
+                initialLengthInput.value = params.initialLength;
+                branchColorInput.value = params.branchColor;
+                generateFractal();
+            } catch (e) {
+                alert('Invalid parameter file.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // Function to randomize parameters
+    function randomizeParameters() {
+        const depth = getRandomInt(7, 12);
+        const angle = getRandomFloat(15, 45);
+        const lengthRatio = getRandomFloat(0.6, 0.8);
+        const initialLength = getRandomInt(80, 150);
+        const branchColor = getRandomColor();
+
+        depthInput.value = depth;
+        angleInput.value = angle.toFixed(1);
+        lengthRatioInput.value = lengthRatio.toFixed(2);
+        initialLengthInput.value = initialLength;
+        branchColorInput.value = branchColor;
+
+        generateFractal();
+    }
+
+    // Helper functions
+    function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getRandomFloat(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    // Event listeners
+    generateBtn.addEventListener('click', generateFractal);
+    saveFractalBtn.addEventListener('click', saveFractal);
+    saveParamsBtn.addEventListener('click', saveParameters);
+    randomBtn.addEventListener('click', randomizeParameters);
+    loadParamsInput.addEventListener('change', function(event) {
+        if (event.target.files.length > 0) {
+            loadParameters(event.target.files[0]);
+            // Reset the input
+            event.target.value = '';
+        }
+    });
+
+    // Initial fractal
+    generateFractal();
+</script>
+
+</body>
+</html>
+
